@@ -1,0 +1,71 @@
+{
+  "name": "@caseyplummer/ts-route",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Route definitions in TypeScript",
+  "author": "Casey Plummer",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "route",
+    "routes",
+    "typescript",
+    "javascript",
+    "router",
+    "navigation"
+  ],
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/esm/index.js",
+      "types": "./dist/esm/index.d.ts"
+    }
+  },
+  "sideEffects": false,
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "clean:tsbuild": "rimraf --glob src/**/*.js src/**/*.js.map src/**/*.d.ts src/**/*.d.ts.map",
+    "clean:dist": "rimraf dist",
+    "clean": "npm run clean:tsbuild && npm run clean:dist",
+    "check": "tsc -p tsconfig.esm.json --noEmit && tsc -p tsconfig.cjs.json --noEmit",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build": "npm run clean && npm run build:esm && npm run build:cjs",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CaseyPlummer/ts-route.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CaseyPlummer/ts-route/issues"
+  },
+  "homepage": "https://github.com/CaseyPlummer/ts-route#readme",
+  "devDependencies": {
+    "@tsconfig/node-lts": "^22.0.2",
+    "@tsconfig/strictest": "^2.0.6",
+    "@types/node": "^20.19.17",
+    "@typescript-eslint/eslint-plugin": "^8.33.0",
+    "@typescript-eslint/parser": "^8.33.0",
+    "eslint": "^9.27.0",
+    "prettier": "^3.5.3",
+    "rimraf": "^5.0.10",
+    "typescript": "^5.8.3"
+  },
+  "files": [
+    "dist/**",
+    "README.md",
+    "LICENSE"
+  ]
+}
