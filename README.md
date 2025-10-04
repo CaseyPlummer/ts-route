@@ -32,25 +32,54 @@ import { Route, buildHref, findRoute, type RouteArgs } from '@caseyplummer/ts-ro
 // Define route paths as enums for type safety
 export enum RoutePath {
   Home = '',
+  Register = 'register',
+  SignIn = 'sign-in',
   Dashboard = '@[handle]',
   Profile = '@[handle]/profile',
-  SignIn = 'sign-in',
-  Register = 'register',
+  Posts = 'posts',
+  Post = 'post/[id]',
 }
 
-// Define query parameter types
+// Query types for specific route(s)
 export interface SignInQuery {
   redirect?: string;
   error?: string;
 }
 
+// Metadata types for specific route(s)
+export interface SidebarMeta {
+  hasSidebar: boolean;
+}
+
+// Context types for specific route(s)
+export interface IdNameContext {
+  id: string;
+  name: string;
+}
+
+// Narrow the Route type with an app default
+import type { Route as RouteBase } from '@caseyplummer/ts-route';
+export type Route<
+  Path extends RoutePath,
+  Query extends object = object,
+  Meta extends object = object,
+  Context extends object = object,
+> = RouteBase<Path, AppQueryParams, Query, Meta, Context>;
+
 // Define route types with full type safety
 export type HomeRoute = Route<RoutePath.Home>;
-export type DashboardRoute = Route<RoutePath.Dashboard>;
+export type RegisterRoute = Route<RoutePath.Register>;
 export type SignInRoute = Route<RoutePath.SignIn, SignInQuery>;
+export type DashboardRoute = Route<RoutePath.Dashboard>;
+export type ProfileRoute = Route<RoutePath.Profile>;
+export type PostsRoute = Route<RoutePath.Posts>;
+export type PostRoute = Route<RoutePath.Post, object, object, IdNameContext>;
+
+// Union type for all defined routes
+export type AppRoute = HomeRoute | RegisterRoute | SignInRoute | DashboardRoute | ProfileRoute | PostsRoute | PostRoute;
 
 // Centralized route definitions
-export const appRoutes = [
+export const baseRoutes: AppRoute[] = [
   {
     path: RoutePath.Home,
     title: () => 'Home',
@@ -76,34 +105,34 @@ export const appRoutes = [
     path: RoutePath.Register,
     title: () => 'Register',
   },
+  {
+    path: RoutePath.Posts,
+    title: () => 'Posts',
+  },
+  {
+    path: RoutePath.Post,
+    title: ({ params, context }) => context?.name ?? `Post ID ${params?.id}`,
+    breadcrumb: ({ params, context }) => context?.name ?? `Post ID ${params?.id}`,
+  },
 ] as const;
 
-// Clean syntax for components - much easier to use!
+// Provides better syntax for using routes in components
 export const routes = {
-  home: { href: () => buildHref(appRoutes[0], {}) },
+  home: { href: () => getHref(RoutePath.Home) },
 
   dashboard: {
-    href: (handle: string) =>
-      buildHref(appRoutes[1], {
-        params: { handle },
-      }),
+    href: (handle: string) => getHref(RoutePath.Dashboard, { params: { handle } }),
   },
 
   profile: {
-    href: (handle: string) =>
-      buildHref(appRoutes[2], {
-        params: { handle },
-      }),
+    href: (handle: string) => getHref(RoutePath.Dashboard, { params: { handle } }),
   },
 
   signIn: {
-    href: (redirect?: string, error?: string) =>
-      buildHref(appRoutes[3], {
-        query: { redirect, error },
-      }),
+    href: (redirect?: string, error?: string) => getHref(RoutePath.SignIn, { query: { redirect, error } }),
   },
 
-  register: { href: () => buildHref(appRoutes[4], {}) },
+  register: { href: () => getHref(RoutePath.Register, {}) },
 };
 ```
 
@@ -182,7 +211,6 @@ const currentTitle = computed(() => {
 </script>
 
 <nav>
-  <!-- Super clean syntax! -->
   <p><a href={routes.home.href()}>Home</a></p>
   <p><a href={routes.dashboard.href(currentUser)}>Go to Dashboard</a></p>
   <p><a href={routes.profile.href(currentUser)}>Go to Profile</a></p>
@@ -210,7 +238,6 @@ if (currentRoute) {
   console.log('Query params:', currentRoute.query);
 }
 
-// Navigate programmatically - much cleaner!
 function navigateToDashboard(handle: string) {
   window.location.href = routes.dashboard.href(handle);
 }
@@ -277,13 +304,10 @@ const breadcrumbs = buildBreadcrumbTrail('/john-doe/profile/settings', appRoutes
 - `buildHref(route, args)` - Build href for a route with parameters
 - `parseUrl(url, path)` - Parse URL against a specific route path
 - `buildBreadcrumbTrail(url, routes)` - Build breadcrumb navigation
-- `validatePathParams(route, params)` - Validate route parameters
 
 ### Query Parameter Utilities
 
 - `QueryParamsBase` - Base class for custom query parameter parsing
-- `getQueryValues(params, key)` - Get all values for a query parameter
-- `processQueryValues(values)` - Process and deduplicate query values
 
 ## Examples
 
