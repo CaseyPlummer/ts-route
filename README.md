@@ -153,7 +153,7 @@ import { appRoutes, routes } from './routes';
 
 function Navigation() {
   const location = useLocation();
-  const currentUser = 'john-doe'; // from your auth state
+  const currentUser = { profile: { handle: 'john-doe' } }; // AuthState type
 
   // Find the current route with full type safety
   const currentRoute = findRoute(location.pathname, appRoutes);
@@ -163,8 +163,15 @@ function Navigation() {
       {/* Clean, readable syntax */}
       <Link to={routes.home.href()}>Home</Link>
       <Link to={routes.dashboard.href(currentUser)}>Dashboard</Link>
+      <Link to={routes.account.href(currentUser)}>Account</Link>
       <Link to={routes.profile.href(currentUser)}>Profile</Link>
-      <Link to={routes.signIn.href('/dashboard')}>Sign In</Link>
+      <Link to={routes.posts.href()}>Posts</Link>
+      <Link to={routes.post.href('123', 'My Post')}>View Post</Link>
+
+      {/* Auth routes with query parameters */}
+      <Link to={routes.signIn.href()}>Sign In</Link>
+      <Link to={routes.verifyEmail.href(true)}>Verify Email</Link>
+      <Link to={routes.forgotPassword.href('user@example.com')}>Forgot Password</Link>
 
       {/* Display current page title */}
       {currentRoute && <h1>{currentRoute.title({})}</h1>}
@@ -180,8 +187,10 @@ function Navigation() {
   <nav>
     <router-link :to="routes.home.href()">Home</router-link>
     <router-link :to="routes.dashboard.href(currentUser)">Dashboard</router-link>
+    <router-link :to="routes.account.href(currentUser)">Account</router-link>
     <router-link :to="routes.profile.href(currentUser)">Profile</router-link>
-    <router-link :to="routes.signIn.href('/dashboard')">Sign In</router-link>
+    <router-link :to="routes.posts.href()">Posts</router-link>
+    <router-link :to="routes.post.href('123', 'My Post')">View Post</router-link>
 
     <h1 v-if="currentTitle">{{ currentTitle }}</h1>
   </nav>
@@ -194,7 +203,7 @@ import { findRoute } from '@caseyplummer/ts-route';
 import { appRoutes, routes } from './routes';
 
 const route = useRoute();
-const currentUser = 'john-doe'; // from your auth state
+const currentUser = { profile: { handle: 'john-doe' } }; // AuthState type
 
 const currentTitle = computed(() => {
   const matched = findRoute(route.path, appRoutes);
@@ -210,7 +219,7 @@ const currentTitle = computed(() => {
   import { findRoute } from "@caseyplummer/ts-route";
   import { appRoutes, routes } from "./routes";
 
-  let currentUser = "john-doe"; // from your auth state
+  let currentUser = { profile: { handle: "john-doe" } }; // AuthState type
 
   // Find current route
   $: currentRoute = findRoute($page.url.pathname, appRoutes);
@@ -219,8 +228,10 @@ const currentTitle = computed(() => {
 <nav>
   <p><a href={routes.home.href()}>Home</a></p>
   <p><a href={routes.dashboard.href(currentUser)}>Go to Dashboard</a></p>
+  <p><a href={routes.account.href(currentUser)}>Go to Account</a></p>
   <p><a href={routes.profile.href(currentUser)}>Go to Profile</a></p>
-  <p><a href={routes.signIn.href("/dashboard")}>Sign In</a></p>
+  <p><a href={routes.posts.href()}>View Posts</a></p>
+  <p><a href={routes.post.href("123", "My Post")}>View Post</a></p>
 
   {#if currentRoute}
     <h1>{currentRoute.title({})}</h1>
@@ -244,12 +255,20 @@ if (currentRoute) {
   console.log('Query params:', currentRoute.query);
 }
 
-function navigateToDashboard(handle: string) {
-  window.location.href = routes.dashboard.href(handle);
+// Navigate programmatically with different parameter types
+function navigateToDashboard(user: AuthState) {
+  window.location.href = routes.dashboard.href(user);
 }
 
-// Build URLs for links
-document.querySelector('#sign-in-link')?.setAttribute('href', routes.signIn.href('/dashboard'));
+function navigateToPost(id: string, name?: string) {
+  window.location.href = routes.post.href(id, name);
+}
+
+// Build URLs for links with various parameter combinations
+document.querySelector('#posts-link')?.setAttribute('href', routes.posts.href());
+document.querySelector('#post-link')?.setAttribute('href', routes.post.href('123', 'My Post'));
+document.querySelector('#sign-in-link')?.setAttribute('href', routes.signIn.href());
+document.querySelector('#verify-email-link')?.setAttribute('href', routes.verifyEmail.href(true));
 ```
 
 ### 3. Advanced Features
