@@ -2,13 +2,7 @@
 
 ## Quick Steps
 
-1. **Update version**
-
-   ```bash
-   npm version patch  # or minor/major
-   ```
-
-2. **Run checks**
+1. **Run checks**
 
    ```bash
    npm whoami           # Verify login
@@ -16,6 +10,12 @@
    npm run build        # Build both formats
    npm test             # Run tests
    npm pack --dry-run   # Verify package
+   ```
+
+2. **Update version**
+
+   ```bash
+   npm version patch  # or minor/major
    ```
 
 3. **Publish**
@@ -31,9 +31,9 @@
 
 ## Pre-publish Checklist
 
-- [ ] Tests pass
 - [ ] Type check passes
 - [ ] Build succeeds
+- [ ] Tests pass
 - [ ] README updated
 - [ ] Version bumped
 - [ ] OTP code ready
