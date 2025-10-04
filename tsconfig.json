@@ -18,6 +18,6 @@
     "sourceMap": false,
     "verbatimModuleSyntax": true
   },
-  "include": ["src/**/*", "examples/routes.helpers.ts"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests", "examples"]
 }
