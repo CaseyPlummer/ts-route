@@ -49,8 +49,8 @@
     "prepublishOnly": "npm run build"
   },
   "repository": {
-    "type": "git",
-    "url": "git+https://github.com/CaseyPlummer/ts-route.git"
+    "type": "github",
+    "url": "https://github.com/CaseyPlummer/ts-route"
   },
   "bugs": {
     "url": "https://github.com/CaseyPlummer/ts-route/issues"
