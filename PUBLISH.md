@@ -18,7 +18,14 @@
    npm version patch  # or minor/major
    ```
 
-3. **Publish**
+3. **Commit and push**
+
+   ```bash
+   git push origin main
+   git push --tags
+   ```
+
+4. **Publish**
    ```bash
    npm publish --access public --otp=<6-digit-code>
    ```
