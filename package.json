@@ -1,6 +1,6 @@
 {
   "name": "@caseyplummer/ts-route",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Route definitions in TypeScript",
   "author": "Casey Plummer",
@@ -44,6 +44,8 @@
     "rename-cjs": "cd dist/cjs && for %f in (*.js) do ren \"%f\" \"%~nf.cjs\" && for %f in (*.cjs) do (powershell -Command \"(Get-Content '%f') -replace '\\.js', '.cjs' | Set-Content '%f'\")",
     "test": "vitest run",
     "test:watch": "vitest",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "prepublishOnly": "npm run build"
   },
   "repository": {

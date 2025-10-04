@@ -1,5 +1,5 @@
-import type { QueryParamsReader } from "./query.types.js";
-import { getQueryValues } from "./util.js";
+import type { QueryParamsReader } from './query.types.js';
+import { getQueryValues } from './util.js';
 
 export class QueryParamsBase implements QueryParamsReader {
   constructor(protected readonly params: Record<string, string | string[]>) {}

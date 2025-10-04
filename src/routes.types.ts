@@ -1,10 +1,9 @@
-import type { QueryParamsFactory, QueryParamsReader } from "./query.types.js";
+import type { QueryParamsFactory, QueryParamsReader } from './query.types.js';
 
 // Utility type to extract dynamic parameters from a path (e.g., '@[handle]' -> { handle: string })
-export type ExtractParams<T extends string> =
-  T extends `${string}[${infer Param}]${infer Rest}`
-    ? { [K in Param | keyof ExtractParams<Rest>]: string }
-    : object;
+export type ExtractParams<T extends string> = T extends `${string}[${infer Param}]${infer Rest}`
+  ? { [K in Param | keyof ExtractParams<Rest>]: string }
+  : object;
 
 // Distributive helper to extract all generic parts of a Route specialization in one pass.
 export type RouteParts<TRoute> =
@@ -30,36 +29,20 @@ export type WildcardRoute = Route<string, any, any, any, any>;
 
 // Field-level extractors delegate to RouteParts for consistency.
 export type ExtractQueryParams<TRoute> =
-  RouteParts<TRoute> extends infer R
-    ? R extends { queryParams: infer QueryParams }
-      ? QueryParams
-      : never
-    : never;
+  RouteParts<TRoute> extends infer R ? (R extends { queryParams: infer QueryParams } ? QueryParams : never) : never;
 export type ExtractQuery<TRoute> =
-  RouteParts<TRoute> extends infer R
-    ? R extends { query: infer Query }
-      ? Query
-      : never
-    : never;
+  RouteParts<TRoute> extends infer R ? (R extends { query: infer Query } ? Query : never) : never;
 export type ExtractMeta<TRoute> =
-  RouteParts<TRoute> extends infer R
-    ? R extends { meta: infer Meta }
-      ? Meta
-      : never
-    : never;
+  RouteParts<TRoute> extends infer R ? (R extends { meta: infer Meta } ? Meta : never) : never;
 export type ExtractContext<TRoute> =
-  RouteParts<TRoute> extends infer R
-    ? R extends { context: infer Context }
-      ? Context
-      : never
-    : never;
+  RouteParts<TRoute> extends infer R ? (R extends { context: infer Context } ? Context : never) : never;
 
 export interface RouteArgs<TRoute extends WildcardRoute> {
-  readonly params?: ExtractParams<RouteParts<TRoute>["path"]>;
-  readonly queryParams?: RouteParts<TRoute>["queryParams"];
-  readonly query?: RouteParts<TRoute>["query"];
-  readonly meta?: RouteParts<TRoute>["meta"];
-  readonly context?: RouteParts<TRoute>["context"];
+  readonly params?: ExtractParams<RouteParts<TRoute>['path']>;
+  readonly queryParams?: RouteParts<TRoute>['queryParams'];
+  readonly query?: RouteParts<TRoute>['query'];
+  readonly meta?: RouteParts<TRoute>['meta'];
+  readonly context?: RouteParts<TRoute>['context'];
 }
 
 // Route definition with type-safe parameters
@@ -95,7 +78,7 @@ export interface Route<
        * Note: For routes without a queryParamsFactory, this is a synthetic reader built from the typed query object.
        */
       readonly queryParams: QueryParams;
-    }
+    },
   ) => string;
   readonly title: (args: RouteArgs<this>) => string;
   readonly breadcrumb?: (args: RouteArgs<this>) => string;
@@ -104,14 +87,14 @@ export interface Route<
 
 export interface MatchedRoute<TRoute extends WildcardRoute> {
   readonly route: TRoute;
-  readonly params: ExtractParams<RouteParts<TRoute>["path"]>;
-  readonly query: RouteParts<TRoute>["query"];
-  readonly meta: RouteParts<TRoute>["meta"];
+  readonly params: ExtractParams<RouteParts<TRoute>['path']>;
+  readonly query: RouteParts<TRoute>['query'];
+  readonly meta: RouteParts<TRoute>['meta'];
   readonly fullPath: string;
   readonly fragment: string;
-  readonly title: (context: RouteParts<TRoute>["context"]) => string;
-  readonly breadcrumb: (context: RouteParts<TRoute>["context"]) => string;
-  readonly href: (context: RouteParts<TRoute>["context"]) => string;
+  readonly title: (context: RouteParts<TRoute>['context']) => string;
+  readonly breadcrumb: (context: RouteParts<TRoute>['context']) => string;
+  readonly href: (context: RouteParts<TRoute>['context']) => string;
 }
 
 // Interface for nested route rendering

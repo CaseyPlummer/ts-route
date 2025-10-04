@@ -27,20 +27,15 @@ yarn add @caseyplummer/ts-route
 ### 1. Define Your Routes
 
 ```ts
-import {
-  Route,
-  buildHref,
-  findRoute,
-  type RouteArgs,
-} from "@caseyplummer/ts-route";
+import { Route, buildHref, findRoute, type RouteArgs } from '@caseyplummer/ts-route';
 
 // Define route paths as enums for type safety
 export enum RoutePath {
-  Home = "",
-  Dashboard = "@[handle]",
-  Profile = "@[handle]/profile",
-  SignIn = "sign-in",
-  Register = "register",
+  Home = '',
+  Dashboard = '@[handle]',
+  Profile = '@[handle]/profile',
+  SignIn = 'sign-in',
+  Register = 'register',
 }
 
 // Define query parameter types
@@ -58,7 +53,7 @@ export type SignInRoute = Route<RoutePath.SignIn, SignInQuery>;
 export const appRoutes = [
   {
     path: RoutePath.Home,
-    title: () => "Home",
+    title: () => 'Home',
   },
   {
     path: RoutePath.Dashboard,
@@ -71,15 +66,15 @@ export const appRoutes = [
   },
   {
     path: RoutePath.SignIn,
-    title: () => "Sign In",
+    title: () => 'Sign In',
     getQuery: (params) => ({
-      redirect: params.value("redirect"),
-      error: params.value("error"),
+      redirect: params.value('redirect'),
+      error: params.value('error'),
     }),
   },
   {
     path: RoutePath.Register,
-    title: () => "Register",
+    title: () => 'Register',
   },
 ] as const;
 
@@ -117,13 +112,13 @@ export const routes = {
 #### React Example
 
 ```tsx
-import { Link, useLocation } from "react-router-dom";
-import { findRoute } from "@caseyplummer/ts-route";
-import { appRoutes, routes } from "./routes";
+import { Link, useLocation } from 'react-router-dom';
+import { findRoute } from '@caseyplummer/ts-route';
+import { appRoutes, routes } from './routes';
 
 function Navigation() {
   const location = useLocation();
-  const currentUser = "john-doe"; // from your auth state
+  const currentUser = 'john-doe'; // from your auth state
 
   // Find the current route with full type safety
   const currentRoute = findRoute(location.pathname, appRoutes);
@@ -134,7 +129,7 @@ function Navigation() {
       <Link to={routes.home.href()}>Home</Link>
       <Link to={routes.dashboard.href(currentUser)}>Dashboard</Link>
       <Link to={routes.profile.href(currentUser)}>Profile</Link>
-      <Link to={routes.signIn.href("/dashboard")}>Sign In</Link>
+      <Link to={routes.signIn.href('/dashboard')}>Sign In</Link>
 
       {/* Display current page title */}
       {currentRoute && <h1>{currentRoute.title({})}</h1>}
@@ -149,9 +144,7 @@ function Navigation() {
 <template>
   <nav>
     <router-link :to="routes.home.href()">Home</router-link>
-    <router-link :to="routes.dashboard.href(currentUser)"
-      >Dashboard</router-link
-    >
+    <router-link :to="routes.dashboard.href(currentUser)">Dashboard</router-link>
     <router-link :to="routes.profile.href(currentUser)">Profile</router-link>
     <router-link :to="routes.signIn.href('/dashboard')">Sign In</router-link>
 
@@ -160,13 +153,13 @@ function Navigation() {
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { useRoute } from "vue-router";
-import { findRoute } from "@caseyplummer/ts-route";
-import { appRoutes, routes } from "./routes";
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import { findRoute } from '@caseyplummer/ts-route';
+import { appRoutes, routes } from './routes';
 
 const route = useRoute();
-const currentUser = "john-doe"; // from your auth state
+const currentUser = 'john-doe'; // from your auth state
 
 const currentTitle = computed(() => {
   const matched = findRoute(route.path, appRoutes);
@@ -204,17 +197,17 @@ const currentTitle = computed(() => {
 #### Vanilla JavaScript/TypeScript
 
 ```ts
-import { findRoute } from "@caseyplummer/ts-route";
-import { appRoutes, routes } from "./routes";
+import { findRoute } from '@caseyplummer/ts-route';
+import { appRoutes, routes } from './routes';
 
 // Find current route
 const currentPath = window.location.pathname;
 const currentRoute = findRoute(currentPath, appRoutes);
 
 if (currentRoute) {
-  console.log("Current page:", currentRoute.title({}));
-  console.log("Route params:", currentRoute.params);
-  console.log("Query params:", currentRoute.query);
+  console.log('Current page:', currentRoute.title({}));
+  console.log('Route params:', currentRoute.params);
+  console.log('Query params:', currentRoute.query);
 }
 
 // Navigate programmatically - much cleaner!
@@ -223,9 +216,7 @@ function navigateToDashboard(handle: string) {
 }
 
 // Build URLs for links
-document
-  .querySelector("#sign-in-link")
-  ?.setAttribute("href", routes.signIn.href("/dashboard"));
+document.querySelector('#sign-in-link')?.setAttribute('href', routes.signIn.href('/dashboard'));
 ```
 
 ### 3. Advanced Features
@@ -233,28 +224,28 @@ document
 #### Custom Query Parameter Parsing
 
 ```ts
-import { QueryParamsBase } from "@caseyplummer/ts-route";
+import { QueryParamsBase } from '@caseyplummer/ts-route';
 
 class AppQueryParams extends QueryParamsBase {
   // Custom parsing for your app's query parameters
   userId(): number | undefined {
-    const value = this.value("userId");
+    const value = this.value('userId');
     return value ? parseInt(value, 10) : undefined;
   }
 
   tags(): string[] {
-    return this.values("tag"); // Handles multiple values
+    return this.values('tag'); // Handles multiple values
   }
 
   isVerified(): boolean | undefined {
-    return this.boolean("verified");
+    return this.boolean('verified');
   }
 }
 
 // Use in route definitions
 const routes = [
   {
-    path: "/users/@[handle]",
+    path: '/users/@[handle]',
     title: ({ params }) => `User: ${params.handle}`,
     getQuery: (params) => new AppQueryParams(params.params),
   },
@@ -264,13 +255,10 @@ const routes = [
 #### Nested Routes with Breadcrumbs
 
 ```ts
-import { buildBreadcrumbTrail } from "@caseyplummer/ts-route";
+import { buildBreadcrumbTrail } from '@caseyplummer/ts-route';
 
 // Build breadcrumb navigation
-const breadcrumbs = buildBreadcrumbTrail(
-  "/john-doe/profile/settings",
-  appRoutes
-);
+const breadcrumbs = buildBreadcrumbTrail('/john-doe/profile/settings', appRoutes);
 
 // breadcrumbs = ['Home', "john-doe's Dashboard", "john-doe's Profile", 'Settings']
 ```
