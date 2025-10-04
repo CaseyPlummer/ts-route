@@ -195,6 +195,10 @@ const baseRoutes: AppRoute[] = [
     path: RoutePath.Post,
     title: ({ params, context }) => context?.name ?? `Post ID ${params?.id}`,
     breadcrumb: ({ params, context }) => context?.name ?? `Post ID ${params?.id}`,
+    href: ({ params, context }) => {
+      const base = `/posts/${params?.id}`;
+      return context?.name ? `${base}#${context.name}` : base;
+    },
   },
 ] as const;
 
@@ -253,5 +257,9 @@ export const routes = {
       getHref(RoutePath.Profile, {
         params: { handle: authToHandle(authOrHandle) },
       }),
+    posts: { href: () => getHref(RoutePath.Posts) },
+    post: {
+      href: (id: string, name?: string) => getHref(RoutePath.Post, { context: { id, name } }),
+    },
   },
 };
