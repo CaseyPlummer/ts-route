@@ -5,7 +5,7 @@ import { getHref, getRoute } from '../examples/app-helpers.js';
 
 describe('Route Definitions', () => {
   it('should define all expected route paths in RoutePath enum', () => {
-    expect(Object.keys(RoutePath).length).toBe(13);
+    expect(Object.keys(RoutePath).length).toBe(15);
     expect(RoutePath.Home).toBeDefined();
     expect(RoutePath.Register).toBeDefined();
     expect(RoutePath.SignIn).toBeDefined();
