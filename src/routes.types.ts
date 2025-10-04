@@ -45,7 +45,14 @@ export interface RouteArgs<TRoute extends WildcardRoute> {
   readonly context?: RouteParts<TRoute>['context'];
 }
 
-// Route definition with type-safe parameters
+/**
+ * Type-safe route definition.
+ * @template Path - URL path pattern with optional params (e.g., '@[handle]/posts/[id]')
+ * @template QueryParams - Query parameter reader with typed getters
+ * @template Query - Typed query object derived from QueryParams
+ * @template Meta - Additional route metadata (e.g. route info for dynamic components)
+ * @template Context - Runtime context for dynamic titles/breadcrumbs (e.g., entity names)
+ */
 export interface Route<
   Path extends string,
   QueryParams extends QueryParamsReader = QueryParamsReader,
@@ -53,19 +60,21 @@ export interface Route<
   Meta extends object = object,
   Context extends object = object,
 > {
+  /** URL path pattern with optional params (e.g., '@[handle]', 'posts/[id]') */
   readonly path: Path;
+  /** Parent route path for hierarchical routing */
   readonly parentPath?: string;
+  /** Factory to create QueryParams reader from URLSearchParams */
   readonly queryParamsFactory?: QueryParamsFactory<QueryParams>;
+  /** Derives typed query object from QueryParams reader */
   readonly getQuery?: (params: QueryParams) => Query;
+  /** Provides route metadata */
   readonly getMeta?: () => Meta;
+  /** Encodes individual query values (fallback for serializeQuery) */
   readonly encodeQueryValue?: (value: unknown) => string;
   /**
-   * Optional whole-query serializer (takes precedence over encodeQueryValue if provided).
-   * Must return a URI-encoded query string WITHOUT the leading '?'. Implementations are
-   * responsible for encoding keys and values (no automatic lower-casing or encoding applied).
-   * Returning an empty string (or only whitespace) results in no query string being appended.
-   * Receives the fully materialized typed query along with raw queryParams reader (if a factory exists)
-   * so advanced serializers can re-interpret original multi-value inputs if desired.
+   * Custom query serializer (takes precedence over encodeQueryValue).
+   * Must return URI-encoded string WITHOUT leading '?'. Empty string = no query.
    */
   readonly serializeQuery?: (
     query: Query,
@@ -80,8 +89,11 @@ export interface Route<
       readonly queryParams: QueryParams;
     },
   ) => string;
+  /** Generates page title from route arguments */
   readonly title: (args: RouteArgs<this>) => string;
+  /** Generates breadcrumb label from route arguments */
   readonly breadcrumb?: (args: RouteArgs<this>) => string;
+  /** Generates full href from route arguments */
   readonly href?: (args: RouteArgs<this>) => string;
 }
 
