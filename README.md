@@ -218,11 +218,11 @@ const currentTitle = computed(() => {
 <script lang="ts">
   import { findRoute } from "@caseyplummer/ts-route";
   import { appRoutes, routes } from "./routes";
+  import { page } from "$app/stores";
 
   let currentUser = { profile: { handle: "john-doe" } }; // AuthState type
 
-  // Find current route
-  $: currentRoute = findRoute($page.url.pathname, appRoutes);
+  let currentRoute = $derived(findRoute($page.url.pathname, appRoutes));
 </script>
 
 <nav>

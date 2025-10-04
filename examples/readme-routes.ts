@@ -31,7 +31,6 @@ export interface IdNameContext {
 }
 
 // Narrow the Route type with an app default
-
 export type Route<
   Path extends RoutePath,
   Query extends object = object,
