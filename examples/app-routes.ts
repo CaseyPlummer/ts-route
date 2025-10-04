@@ -24,7 +24,7 @@ export enum RoutePath {
   Post = 'post/[id]',
 }
 
-// Query parameter types for specific route(s)
+// Query types for specific route(s)
 export enum AuthAction {
   verifyEmail = 'verifyEmail',
   resetPassword = 'resetPassword',
@@ -196,7 +196,7 @@ const baseRoutes: AppRoute[] = [
     title: ({ params, context }) => context?.name ?? `Post ID ${params?.id}`,
     breadcrumb: ({ params, context }) => context?.name ?? `Post ID ${params?.id}`,
   },
-];
+] as const;
 
 export function applyAppDefaults<TRoute extends WildcardRoute>(
   routes: TRoute[],
