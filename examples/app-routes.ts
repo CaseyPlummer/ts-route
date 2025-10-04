@@ -1,4 +1,4 @@
-import type { Route } from '../src/index.js';
+import type { Route as RouteBase, WildcardRoute } from '../src/index.js';
 import { appEncodeValue, authToHandle, getHref, type AuthState } from './app-helpers.js';
 import { AppQueryParams } from './app-query.js';
 import { validateRoutes } from './app-validation.js';
@@ -20,9 +20,11 @@ export enum RoutePath {
   Dashboard = '@[handle]',
   Account = '@[handle]/account',
   Profile = '@[handle]/profile',
+  Posts = 'posts',
+  Post = 'post/[id]',
 }
 
-// Specific query parameter types for each route
+// Query parameter types for specific route(s)
 export enum AuthAction {
   verifyEmail = 'verifyEmail',
   resetPassword = 'resetPassword',
@@ -35,10 +37,6 @@ export interface AuthActionQuery {
   continueUrl?: string;
   apiKey?: string;
   lang?: string;
-}
-
-export interface SidebarMeta {
-  hasLists: boolean;
 }
 
 export interface ForgotPasswordQuery {
@@ -58,32 +56,41 @@ export interface VerifyEmailApplyQuery {
   code: string | undefined;
 }
 
-// Context types for specific routes
+// Metadata types for specific route(s)
+export interface SidebarMeta {
+  hasLists: boolean;
+}
+
+// Context types for specific route(s)
 export interface IdNameContext {
   id: string;
   name: string;
 }
 
-// Specific route types
+// Narrow the Route type with an app default
+export type Route<
+  Path extends RoutePath,
+  Query extends object = object,
+  Meta extends object = object,
+  Context extends object = object,
+> = RouteBase<Path, AppQueryParams, Query, Meta, Context>;
+
+// Defined route types
 export type HomeRoute = Route<RoutePath.Home>;
 export type RegisterRoute = Route<RoutePath.Register>;
 export type WelcomeRoute = Route<RoutePath.Welcome>;
 export type SignInRoute = Route<RoutePath.SignIn>;
 export type SignOutRoute = Route<RoutePath.SignOut>;
-export type AuthActionRoute = Route<RoutePath.AuthAction, AppQueryParams, AuthActionQuery>;
-export type VerifyEmailRoute = Route<RoutePath.VerifyEmail, AppQueryParams, VerifyEmailQuery>;
-export type VerifyEmailApplyRoute = Route<
-  RoutePath.VerifyEmailApply,
-  AppQueryParams,
-  VerifyEmailApplyQuery,
-  object,
-  object
->;
-export type ForgotPasswordRoute = Route<RoutePath.ForgotPassword, AppQueryParams, ForgotPasswordQuery, object, object>;
-export type ResetPasswordRoute = Route<RoutePath.ResetPassword, AppQueryParams, ResetPasswordQuery>;
-export type DashboardRoute = Route<RoutePath.Dashboard>;
+export type AuthActionRoute = Route<RoutePath.AuthAction, AuthActionQuery>;
+export type VerifyEmailRoute = Route<RoutePath.VerifyEmail, VerifyEmailQuery>;
+export type VerifyEmailApplyRoute = Route<RoutePath.VerifyEmailApply, VerifyEmailApplyQuery>;
+export type ForgotPasswordRoute = Route<RoutePath.ForgotPassword, ForgotPasswordQuery>;
+export type ResetPasswordRoute = Route<RoutePath.ResetPassword, ResetPasswordQuery>;
+export type DashboardRoute = Route<RoutePath.Dashboard, object, SidebarMeta>;
 export type AccountRoute = Route<RoutePath.Account>;
 export type ProfileRoute = Route<RoutePath.Profile>;
+export type PostsRoute = Route<RoutePath.Posts>;
+export type PostRoute = Route<RoutePath.Post, object, object, IdNameContext>;
 
 // Union type for all defined routes
 export type AppRoute =
@@ -99,7 +106,9 @@ export type AppRoute =
   | ResetPasswordRoute
   | DashboardRoute
   | AccountRoute
-  | ProfileRoute;
+  | ProfileRoute
+  | PostsRoute
+  | PostRoute;
 
 // Centralized routes definition
 const baseRoutes: AppRoute[] = [
@@ -127,7 +136,7 @@ const baseRoutes: AppRoute[] = [
     path: RoutePath.AuthAction,
     title: () => 'Authentication Action',
     getQuery: (params) => ({
-      mode: params.value('mode') as AuthAction | undefined,
+      mode: params.enumValue(AuthAction, 'mode'),
       code: params.value('oobCode'),
       continueUrl: params.value('continueUrl'),
       apiKey: params.value('apiKey'),
@@ -166,6 +175,7 @@ const baseRoutes: AppRoute[] = [
   {
     path: RoutePath.Dashboard,
     title: () => 'Dashboard',
+    getMeta: () => ({ hasLists: true }),
   },
   {
     path: RoutePath.Account,
@@ -177,14 +187,18 @@ const baseRoutes: AppRoute[] = [
     parentPath: RoutePath.Dashboard,
     title: () => 'Profile',
   },
+  {
+    path: RoutePath.Posts,
+    title: () => 'Posts',
+  },
+  {
+    path: RoutePath.Post,
+    title: ({ params, context }) => context?.name ?? `Post ID ${params?.id}`,
+    breadcrumb: ({ params, context }) => context?.name ?? `Post ID ${params?.id}`,
+  },
 ];
 
-export function applyAppDefaults<
-  TRoute extends {
-    encodeQueryValue?: (v: unknown) => string;
-    queryParamsFactory?: (raw: Record<string, string[]>) => unknown;
-  } & { path: string },
->(
+export function applyAppDefaults<TRoute extends WildcardRoute>(
   routes: TRoute[],
   encoder: (v: unknown) => string,
   queryParamsFactory: (raw: Record<string, string[]>) => unknown,
@@ -194,9 +208,10 @@ export function applyAppDefaults<
     // Only set if the route doesn't already have one
     encodeQueryValue: r.encodeQueryValue ?? encoder,
     queryParamsFactory: r.queryParamsFactory ?? queryParamsFactory,
+    // serializeQuery not used yet in app, so no default
+    serializeQuery: r.serializeQuery ?? undefined,
   }));
 }
-
 export const appRoutes: AppRoute[] = applyAppDefaults(baseRoutes, appEncodeValue, (raw) => new AppQueryParams(raw));
 
 // Validate routes at initialization
