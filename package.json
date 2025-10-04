@@ -1,6 +1,6 @@
 {
   "name": "@caseyplummer/ts-route",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Route definitions in TypeScript",
   "author": "Casey Plummer",
