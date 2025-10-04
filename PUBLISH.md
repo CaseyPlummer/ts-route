@@ -8,7 +8,7 @@
    npm whoami           # Verify login
    npm run check        # Type check
    npm run build        # Build both formats
-   npm test             # Run tests
+   npm run test         # Run tests
    npm pack --dry-run   # Verify package
    ```
 
