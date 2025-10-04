@@ -27,7 +27,9 @@ yarn add @caseyplummer/ts-route
 ### 1. Define Your Routes
 
 ```ts
-import { Route, buildHref, findRoute, type RouteArgs } from '@caseyplummer/ts-route';
+import { Route as RouteBase } from '@caseyplummer/ts-route';
+import { getHref } from './app-helpers';
+import { AppQueryParams } from './app-query';
 
 // Define route paths as enums for type safety
 export enum RoutePath {
@@ -58,7 +60,7 @@ export interface IdNameContext {
 }
 
 // Narrow the Route type with an app default
-import type { Route as RouteBase } from '@caseyplummer/ts-route';
+
 export type Route<
   Path extends RoutePath,
   Query extends object = object,
@@ -86,12 +88,12 @@ export const baseRoutes: AppRoute[] = [
   },
   {
     path: RoutePath.Dashboard,
-    title: ({ params }) => `${params.handle}'s Dashboard`,
+    title: ({ params }) => `${params?.handle}'s Dashboard`,
   },
   {
     path: RoutePath.Profile,
     parentPath: RoutePath.Dashboard,
-    title: ({ params }) => `${params.handle}'s Profile`,
+    title: ({ params }) => `${params?.handle}'s Profile`,
   },
   {
     path: RoutePath.SignIn,
@@ -113,26 +115,30 @@ export const baseRoutes: AppRoute[] = [
     path: RoutePath.Post,
     title: ({ params, context }) => context?.name ?? `Post ID ${params?.id}`,
     breadcrumb: ({ params, context }) => context?.name ?? `Post ID ${params?.id}`,
+    href: ({ params, context }) => {
+      const base = `/posts/${params?.id}`;
+      return context?.name ? `${base}#${context.name}` : base;
+    },
   },
 ] as const;
 
 // Provides better syntax for using routes in components
 export const routes = {
   home: { href: () => getHref(RoutePath.Home) },
-
   dashboard: {
     href: (handle: string) => getHref(RoutePath.Dashboard, { params: { handle } }),
   },
-
   profile: {
     href: (handle: string) => getHref(RoutePath.Dashboard, { params: { handle } }),
   },
-
   signIn: {
     href: (redirect?: string, error?: string) => getHref(RoutePath.SignIn, { query: { redirect, error } }),
   },
-
   register: { href: () => getHref(RoutePath.Register, {}) },
+  posts: { href: () => getHref(RoutePath.Posts) },
+  post: {
+    href: (id: string, name?: string) => getHref(RoutePath.Post, { context: { id, name } }),
+  },
 };
 ```
 
