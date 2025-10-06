@@ -11,6 +11,10 @@ Type-safe route definitions and navigation utilities for TypeScript applications
 - 🔄 **Dual module support** (ESM + CommonJS)
 - ⚡ **Zero runtime dependencies**
 - 📦 **Tree-shakeable** exports
+- ✨ **Route defaults** with app-specific configuration
+- 🔧 **Custom encoders** for app-specific data types
+- 📊 **Enhanced query parsing** for app-specific data types
+- 🧪 **Comprehensive testing** with 320+ test cases
 
 ## Installation
 
@@ -275,12 +279,59 @@ document.querySelector('#verify-email-link')?.setAttribute('href', routes.verify
 
 ### 3. Advanced Features
 
-#### Custom Query Parameter Parsing
+#### Route Defaults
+
+```ts
+import { applyRouteDefaults } from '@caseyplummer/ts-route';
+
+// Apply defaults to all routes
+const appRoutes = applyRouteDefaults(baseRoutes, {
+  queryParamsFactory: (raw) => new AppQueryParams(raw),
+  encodeQueryValue: (value) => String(value),
+  serializeQuery: (query, args) => buildQueryString(query),
+});
+```
+
+#### Custom Value Encoding
+
+```ts
+import { encodeValue } from '@caseyplummer/ts-route';
+
+// Custom encoding for your app's data types
+function appEncodeValue(value: unknown): string {
+  if (value instanceof Date) {
+    return encodeURIComponent(value.toISOString());
+  }
+  return encodeValue(value);
+}
+```
+
+#### Enhanced Query Parameter Parsing
 
 ```ts
 import { QueryParamsBase } from '@caseyplummer/ts-route';
 
 class AppQueryParams extends QueryParamsBase {
+  // Parse dates from ISO strings
+  date(key: string): Date | undefined {
+    const value = this.value(key);
+    return value ? new Date(value) : undefined;
+  }
+
+  // Parse enums with case-insensitive matching
+  enumValue<T>(enumObj: T, key: string): T[keyof T] | undefined {
+    const value = this.value(key);
+    return this.findEnumValue(enumObj, value);
+  }
+
+  // Parse boolean values
+  boolean(key: string): boolean | undefined {
+    const value = this.value(key);
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return undefined;
+  }
+
   // Custom parsing for your app's query parameters
   userId(): number | undefined {
     const value = this.value('userId');
@@ -290,20 +341,7 @@ class AppQueryParams extends QueryParamsBase {
   tags(): string[] {
     return this.values('tag'); // Handles multiple values
   }
-
-  isVerified(): boolean | undefined {
-    return this.boolean('verified');
-  }
 }
-
-// Use in route definitions
-const routes = [
-  {
-    path: '/users/@[handle]',
-    title: ({ params }) => `User: ${params.handle}`,
-    getQuery: (params) => new AppQueryParams(params.params),
-  },
-];
 ```
 
 #### Nested Routes with Breadcrumbs
@@ -331,6 +369,8 @@ const breadcrumbs = buildBreadcrumbTrail('/john-doe/profile/settings', appRoutes
 - `buildHref(route, args)` - Build href for a route with parameters
 - `parseUrl(url, path)` - Parse URL against a specific route path
 - `buildBreadcrumbTrail(url, routes)` - Build breadcrumb navigation
+- `applyRouteDefaults(routes, options)` - Apply route defaults
+- `serializeQuery(query, args, route)` - Custom query serialization
 
 ### Query Parameter Utilities
 
@@ -342,26 +382,10 @@ Check out the `examples/` directory for complete working examples:
 
 - `app-routes.ts` - Full route definitions with type safety
 - `app-helpers.ts` - Custom helper functions
+- `app-query.ts` - Extended query parameter parsing
+- `app-encoders.ts` - Custom value encoding
+- `app-route-defaults.ts` - Framework-level defaults
 - `app-validation.ts` - Route validation utilities
-
-## Development
-
-```bash
-# Install dependencies
-npm install
-
-# Run type checking
-npm run check
-
-# Build the package
-npm run build
-
-# Run tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-```
 
 ## License
 
