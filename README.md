@@ -28,8 +28,9 @@ yarn add @caseyplummer/ts-route
 
 ```ts
 import { Route as RouteBase, WildcardRoute } from '@caseyplummer/ts-route';
-import { appEncodeValue, getHref } from './app-helpers';
+import { getHref } from './app-helpers';
 import { AppQueryParams } from './app-query';
+import { applyAppRouteDefaults } from './app-route-defaults';
 
 // Define route paths as enums for type safety
 export enum RoutePath {
@@ -121,21 +122,7 @@ export const baseRoutes: AppRoute[] = [
   },
 ] as const;
 
-export function applyAppDefaults<TRoute extends WildcardRoute>(
-  routes: TRoute[],
-  encoder: (v: unknown) => string,
-  queryParamsFactory: (raw: Record<string, string[]>) => unknown,
-): TRoute[] {
-  return routes.map((r) => ({
-    ...r,
-    // Only set if the route doesn't already have one
-    encodeQueryValue: r.encodeQueryValue ?? encoder,
-    queryParamsFactory: r.queryParamsFactory ?? queryParamsFactory,
-    // serializeQuery not used yet in app, so no default
-    serializeQuery: r.serializeQuery ?? undefined,
-  }));
-}
-export const appRoutes: AppRoute[] = applyAppDefaults(baseRoutes, appEncodeValue, (raw) => new AppQueryParams(raw));
+export const appRoutes: AppRoute[] = applyAppRouteDefaults(baseRoutes);
 
 // Provides better syntax for using routes in components
 export const routes = {

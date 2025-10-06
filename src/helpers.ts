@@ -244,6 +244,13 @@ export function buildPath<TRoute extends WildcardRoute>(route: TRoute, params?: 
 }
 
 export function encodeValue(value: unknown): string {
+  if (value == null) return ''; // Short-circuit null/undefined
+
+  // Handle arrays by recursively encoding each element and joining with commas
+  if (Array.isArray(value)) {
+    return value.map((v) => encodeValue(v)).join(',');
+  }
+
   const s = toSafeString(value);
   return s === '' ? '' : encodeURIComponent(s);
 }
@@ -263,19 +270,36 @@ export function normalizePercentEscapes(input: string): string {
   return input.replace(/%(?![0-9A-Fa-f]{2})/g, '%25');
 }
 
-// Encode reserved characters while preserving valid percent-encoded sequences.
-// Reserved per RFC3986 plus application-specific (& = space) and query separators.
-export function encodeReservedChars(input: string): string {
-  const reserved = /[\s#&=?/;:@$,]/g;
-  let result = '';
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
+// RFC3986 reserved characters (gen-delims + sub-delims)
+// gen-delims: : / ? # [ ] @
+// sub-delims: ! $ & ' ( ) * + , ; =
+export const rfc3986Reserved = ":/?#[]@!$&'()*+,;=";
 
-  while ((match = reserved.exec(input)) !== null) {
-    result += input.slice(lastIndex, match.index) + encodeURIComponent(match[0]);
-    lastIndex = match.index + match[0].length;
+// Encode reserved characters while preserving valid percent-encoded sequences.
+// Implements configurable reserved characters with optional additional characters.
+export function encodeReservedChars(
+  input: string,
+  reservedChars: string = rfc3986Reserved,
+  additionalChars: string = ' ',
+): string {
+  const allReserved = reservedChars + additionalChars;
+
+  // Validate that at least some characters are specified for encoding
+  if (allReserved === '') {
+    throw new Error(
+      'encodeReservedChars: At least one character must be specified for encoding. ' +
+        'Provide either reservedChars, additionalChars, or both as non-empty strings.',
+    );
   }
-  result += input.slice(lastIndex);
+
+  // Create a Set for faster lookup
+  const reservedSet = new Set(allReserved);
+
+  let result = '';
+  for (const char of input) {
+    result += reservedSet.has(char) ? `%${char.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')}` : char;
+  }
+
   return result;
 }
 
@@ -375,10 +399,7 @@ export function buildFragment(fragment: string | undefined): string {
 
 export function buildHref<TRoute extends WildcardRoute>(
   route: TRoute,
-  args?: RouteArgs<TRoute> & {
-    fragment?: string;
-    queryParams?: ExtractQueryParams<TRoute>;
-  },
+  args?: RouteArgs<TRoute> & { fragment?: string; queryParams?: ExtractQueryParams<TRoute> },
 ): string {
   const { params, query, context, fragment, queryParams } = args ?? {};
   // Fragment precedence: explicit args.fragment > context.fragment (if context is fragment-bearing) > none.
@@ -388,7 +409,8 @@ export function buildHref<TRoute extends WildcardRoute>(
   if (query) {
     if (route.serializeQuery) {
       // Option B: if a real QueryParamsReader is supplied in args, prefer it; otherwise use synthetic.
-      const qpReader = queryParams ?? createQueryParamsFromTyped(query as Record<string, unknown>);
+      const qpReader =
+        (queryParams as QueryParamsReader | undefined) ?? createQueryParamsFromTyped(query as Record<string, unknown>);
       const serialized = route.serializeQuery(query as ExtractQuery<TRoute>, {
         params: (params as ExtractParams<TRoute['path']>) ?? ({} as ExtractParams<TRoute['path']>),
         meta: (route.getMeta?.() as ExtractMeta<TRoute>) ?? ({} as ExtractMeta<TRoute>),

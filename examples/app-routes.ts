@@ -1,6 +1,7 @@
-import type { Route as RouteBase, WildcardRoute } from '../src/index.js';
-import { appEncodeValue, authToHandle, getHref, type AuthState } from './app-helpers.js';
+import type { Route as RouteBase } from '../src/index.js';
+import { authToHandle, getHref, type AuthState } from './app-helpers.js';
 import { AppQueryParams } from './app-query.js';
+import { applyAppRouteDefaults } from './app-route-defaults.js';
 import { validateRoutes } from './app-validation.js';
 
 export enum RoutePath {
@@ -202,21 +203,7 @@ const baseRoutes: AppRoute[] = [
   },
 ] as const;
 
-export function applyAppDefaults<TRoute extends WildcardRoute>(
-  routes: TRoute[],
-  encoder: (v: unknown) => string,
-  queryParamsFactory: (raw: Record<string, string[]>) => unknown,
-): TRoute[] {
-  return routes.map((r) => ({
-    ...r,
-    // Only set if the route doesn't already have one
-    encodeQueryValue: r.encodeQueryValue ?? encoder,
-    queryParamsFactory: r.queryParamsFactory ?? queryParamsFactory,
-    // serializeQuery not used yet in app, so no default
-    serializeQuery: r.serializeQuery ?? undefined,
-  }));
-}
-export const appRoutes: AppRoute[] = applyAppDefaults(baseRoutes, appEncodeValue, (raw) => new AppQueryParams(raw));
+export const appRoutes: AppRoute[] = applyAppRouteDefaults(baseRoutes);
 
 // Validate routes at initialization
 validateRoutes(appRoutes);

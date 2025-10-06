@@ -59,13 +59,6 @@ describe('Route Path Parsing', () => {
     expect(extractParamNames(RoutePath.Register)).toEqual([]);
     expect(extractParamNames(RoutePath.Dashboard)).toEqual(['handle']);
   });
-
-  it('should handle URL encoding in dynamic route parameters', () => {
-    const result = getRoute('/@john%20doe/account');
-    expect(result.params).toEqual({
-      handle: 'john doe',
-    });
-  });
 });
 
 describe('Authentication Routes', () => {

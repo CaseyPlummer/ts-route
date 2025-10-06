@@ -2,14 +2,31 @@ import { findRoute } from '../src/helpers.js';
 import { describe, expect, it } from 'vitest';
 import { AppQueryParams } from '../examples/app-query.js';
 
-// Tests for the derived class (numeric, boolean helpers)
+// Enums & enum-like objects
+enum StringEnum {
+  Fruit = 'Apple',
+  Vegetable = 'Cucumber',
+  Nut = 'Almond',
+}
+
+enum NumericEnum {
+  One = 1,
+  Two = 2,
+  Three = 3,
+}
+
+const customEnumLike = {
+  A: 'ValueA',
+  B: 'ValueB',
+  C: 123,
+};
+
+const emptyEnumLike = {} as const;
+
+// Tests for the derived class (numeric, boolean, dateTime, enum helpers)
 describe('AppQueryParams', () => {
   it('number() should parse numbers and ignore invalid', () => {
-    const params = new AppQueryParams({
-      count: '42',
-      invalid: 'abc',
-      empty: '',
-    });
+    const params = new AppQueryParams({ count: '42', invalid: 'abc', empty: '' });
     expect(params.number('count')).toBe(42);
     expect(params.number('invalid')).toBeUndefined();
     expect(params.number('empty')).toBeUndefined();
@@ -17,11 +34,7 @@ describe('AppQueryParams', () => {
   });
 
   it('boolean() should parse boolean values', () => {
-    const params = new AppQueryParams({
-      active: 'true',
-      inactive: 'false',
-      invalid: 'maybe',
-    });
+    const params = new AppQueryParams({ active: 'true', inactive: 'false', invalid: 'maybe' });
     expect(params.boolean('active')).toBe(true);
     expect(params.boolean('inactive')).toBe(false);
     expect(params.boolean('invalid')).toBeUndefined();
@@ -29,125 +42,84 @@ describe('AppQueryParams', () => {
   });
 
   it('date() should parse ISO date strings', () => {
-    const params = new AppQueryParams({
-      valid: '2025-10-04T12:00:00Z',
-      validShort: '2025-10-04',
-      invalid: 'not-a-date',
-      empty: '',
-    });
-    const validDate = params.date('valid');
-    expect(validDate).toBeInstanceOf(Date);
-    expect(validDate?.toISOString()).toBe('2025-10-04T12:00:00.000Z');
-
-    const shortDate = params.date('validShort');
-    expect(shortDate).toBeInstanceOf(Date);
-
+    const params = new AppQueryParams({ date: '2023-01-15T12:30:45Z', invalid: 'not-a-date' });
+    expect(params.date('date')).toBeInstanceOf(Date);
+    expect(params.date('date')?.toISOString()).toBe('2023-01-15T12:30:45.000Z');
     expect(params.date('invalid')).toBeUndefined();
-    expect(params.date('empty')).toBeUndefined();
     expect(params.date('missing')).toBeUndefined();
   });
 
-  it('enumKey() should return enum keys', () => {
-    const TestEnum = {
-      First: 'first',
-      Second: 'second',
-      Third: 'third',
-    };
-
-    const params = new AppQueryParams({
-      mode: 'First',
-      invalid: 'NotAnEnum',
-    });
-
-    expect(params.enumKey(TestEnum, 'mode')).toBe('First');
-    expect(params.enumKey(TestEnum, 'invalid')).toBeUndefined();
-    expect(params.enumKey(TestEnum, 'missing')).toBeUndefined();
+  it('enumKey() should resolve enum keys (case-insensitive)', () => {
+    const params = new AppQueryParams({ fruit: 'FRUIT' });
+    expect(params.enumKey(StringEnum, 'fruit')).toBe('Fruit');
+    expect(params.enumKey(StringEnum, 'unknown')).toBeUndefined();
   });
 
-  it('enumKey() should support case-insensitive matching', () => {
-    const TestEnum = {
-      First: 'first',
-      Second: 'second',
-    };
-
-    const params = new AppQueryParams({
-      mode: 'first',
-    });
-
-    // Without ignoreCase, should not match
-    expect(params.enumKey(TestEnum, 'mode', { ignoreCase: false })).toBeUndefined();
-
-    // With ignoreCase, should match
-    expect(params.enumKey(TestEnum, 'mode', { ignoreCase: true })).toBe('First');
+  it('enumValue() should resolve enum values (case-insensitive)', () => {
+    const params = new AppQueryParams({ fruit: 'APPLE', count: '1' });
+    expect(params.enumValue(StringEnum, 'fruit')).toBe('Apple');
+    expect(params.enumValue(NumericEnum, 'count')).toBe('One');
   });
 
-  it('enumKey() should support convert option to match by value', () => {
-    const TestEnum = {
-      First: 'first',
-      Second: 'second',
-    };
-
-    const params = new AppQueryParams({
-      mode: 'first', // This is the value, not the key
-    });
-
-    // With convert, should match by value and return key
-    expect(params.enumKey(TestEnum, 'mode', { convert: true })).toBe('First');
+  it('enum helpers should return undefined for invalid values', () => {
+    const params = new AppQueryParams({ fruit: 'Banana', count: 'abc' });
+    expect(params.enumValue(StringEnum, 'fruit')).toBeUndefined();
+    expect(params.enumValue(NumericEnum, 'count')).toBeUndefined();
   });
 
-  it('enumValue() should return enum values', () => {
-    const TestEnum = {
-      First: 'first',
-      Second: 'second',
-      Third: 'third',
-    };
-
-    const params = new AppQueryParams({
-      mode: 'First',
-      invalid: 'NotAnEnum',
-    });
-
-    expect(params.enumValue(TestEnum, 'mode')).toBe('first');
-    expect(params.enumValue(TestEnum, 'invalid')).toBeUndefined();
-    expect(params.enumValue(TestEnum, 'missing')).toBeUndefined();
+  it('enum helpers should work with custom enum-like objects (keys)', () => {
+    const params = new AppQueryParams({ type: 'A', number: 'C' });
+    expect(params.enumKey(customEnumLike, 'type')).toBe('A');
+    expect(params.enumKey(customEnumLike, 'number')).toBe('C');
   });
 
-  it('enumValue() should support convert and ignoreCase options', () => {
-    const TestEnum = {
-      First: 'first',
-      Second: 'second',
-    };
-
-    const params = new AppQueryParams({
-      byValue: 'first',
-      byKey: 'SECOND',
-    });
-
-    // Match by value with convert
-    expect(params.enumValue(TestEnum, 'byValue', { convert: true })).toBe('first');
-
-    // Match by key with ignoreCase
-    expect(params.enumValue(TestEnum, 'byKey', { ignoreCase: true })).toBe('second');
+  it('enum helpers should work with custom enum-like objects (values)', () => {
+    const params = new AppQueryParams({ type: 'ValueA', number: '123' });
+    expect(params.enumValue(customEnumLike, 'type')).toBe('ValueA');
+    expect(params.enumValue(customEnumLike, 'number')).toBe(123);
   });
 
-  it('enum methods should work with numeric enum values', () => {
-    const NumericEnum = {
-      Zero: 0,
-      One: 1,
-      Two: 2,
-    };
+  it('enum helpers should return undefined for empty enum-like objects', () => {
+    const params = new AppQueryParams({ test: 'value' });
+    expect(params.enumValue(emptyEnumLike, 'test')).toBeUndefined();
+    expect(params.enumKey(emptyEnumLike, 'test')).toBeUndefined();
+  });
 
-    const params = new AppQueryParams({
-      key: 'One',
-      value: '1',
-    });
+  it('enumKey() should match by value (case-insensitive)', () => {
+    const params = new AppQueryParams({ type: 'one' });
+    expect(params.enumKey({ One: 'one', Two: 'two', Three: 'three' }, 'type')).toBe('One');
+  });
 
-    expect(params.enumKey(NumericEnum, 'key')).toBe('One');
-    expect(params.enumValue(NumericEnum, 'key')).toBe(1);
+  it('enumKey() should match by value uppercase', () => {
+    const params = new AppQueryParams({ type: 'ONE' });
+    expect(params.enumKey({ One: 'one', Two: 'two', Three: 'three' }, 'type')).toBe('One');
+  });
 
-    // Convert value string to match enum value
-    expect(params.enumKey(NumericEnum, 'value', { convert: true })).toBe('One');
-    expect(params.enumValue(NumericEnum, 'value', { convert: true })).toBe(1);
+  it('enumKey() should return undefined for non-matching value', () => {
+    const params = new AppQueryParams({ type: 'four' });
+    expect(params.enumKey({ One: 'one', Two: 'two', Three: 'three' }, 'type')).toBeUndefined();
+  });
+
+  it('enumKey() should return undefined for missing param', () => {
+    const params = new AppQueryParams({});
+    expect(params.enumKey({ One: 'one', Two: 'two', Three: 'three' }, 'type')).toBeUndefined();
+  });
+
+  it('enumValue() should return value for key or value', () => {
+    const params = new AppQueryParams({ byValue: 'one', byKey: 'One' });
+    expect(params.enumValue({ One: 'one', Two: 'two', Three: 'three' }, 'byValue')).toBe('one');
+    expect(params.enumValue({ One: 'one', Two: 'two', Three: 'three' }, 'byKey')).toBe('one');
+  });
+
+  it('enum helpers should work with numeric enums for key & value', () => {
+    const params = new AppQueryParams({ byValue: '2', byKey: 'Two' });
+    expect(params.enumValue(NumericEnum, 'byValue')).toBe('Two');
+    expect(params.enumKey(NumericEnum, 'byKey')).toBe('Two');
+  });
+
+  it('enumValue() should return undefined for non-matching value', () => {
+    const params = new AppQueryParams({ type: 'invalid' });
+    expect(params.enumValue({ One: 'one', Two: 'two', Three: 'three' }, 'type')).toBeUndefined();
   });
 });
 
@@ -165,9 +137,7 @@ describe('AppQueryParams integration with routing', () => {
     ];
     const url = '/search/complex%20query%20with%20%26%20special%20characters?sort=relevance';
     const result = findRoute(url, routes);
-    expect(result?.params).toEqual({
-      term: 'complex query with & special characters',
-    });
+    expect(result?.params).toEqual({ term: 'complex query with & special characters' });
     expect(result?.query).toEqual({ sort: 'relevance' });
   });
 

@@ -98,23 +98,3 @@ export function handleMatches(url: string | URL, authOrHandle: AuthState | strin
   if (!routeHandle || !authHandle) return false;
   return routeHandle.toLowerCase() === authHandle.toLowerCase();
 }
-
-// If serializeQuery is not used, this can be used as a per-value encoder for query params
-export function appEncodeValue(value: unknown): string {
-  if (value == null) return '';
-  // Handle Date objects - convert to ISO string
-  if (value instanceof Date) {
-    return encodeURIComponent(value.toISOString());
-  }
-  if (Array.isArray(value)) return value.map((v) => appEncodeValue(v)).join(',');
-  if (typeof value === 'object') {
-    // Use custom toString if overridden; otherwise JSON stringify to avoid [object Object]
-    const protoToString = Object.prototype.toString;
-    const v = value as { toString?: () => string };
-    const hasCustom = typeof v.toString === 'function' && v.toString !== protoToString;
-    const serialized = hasCustom ? (v.toString?.() ?? '') : JSON.stringify(v);
-    return encodeURIComponent(serialized);
-  }
-  // Primitive fallback (string | number | boolean | symbol | bigint)
-  return encodeURIComponent(String(value as string | number | boolean));
-}

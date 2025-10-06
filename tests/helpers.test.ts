@@ -25,6 +25,9 @@ import {
   toSafeString,
   validatePathParams,
 } from '../src/helpers.js';
+
+// RFC3986 reserved characters
+const rfc3986Reserved = ":/?#[]@!$&'()*+,;=";
 import type { QueryParamsReader } from '../src/query.types.js';
 import type { Route } from '../src/routes.types.js';
 
@@ -212,6 +215,14 @@ describe('encodeValue', () => {
     };
     expect(encodeValue(obj)).toBe('');
   });
+
+  it('should handle arrays by encoding each element and joining with commas', () => {
+    expect(encodeValue(['hello', 'world'])).toBe('hello,world');
+    expect(encodeValue([1, 2, 3])).toBe('1,2,3');
+    expect(encodeValue(['hello@world', 'test/path'])).toBe('hello%40world,test%2Fpath');
+    expect(encodeValue([])).toBe('');
+    expect(encodeValue([null, undefined, 'value'])).toBe(',,value');
+  });
 });
 
 describe('getRawEncodedValue', () => {
@@ -293,48 +304,187 @@ describe('normalizePercentEscapes', () => {
 });
 
 describe('encodeReservedChars', () => {
-  it('should encode ampersand', () => {
-    expect(encodeReservedChars('a&b')).toBe('a%26b');
+  describe('RFC3986 compliance', () => {
+    it('should encode all RFC3986 gen-delims characters', () => {
+      expect(encodeReservedChars(':', rfc3986Reserved, '')).toBe('%3A');
+      expect(encodeReservedChars('/', rfc3986Reserved, '')).toBe('%2F');
+      expect(encodeReservedChars('?', rfc3986Reserved, '')).toBe('%3F');
+      expect(encodeReservedChars('#', rfc3986Reserved, '')).toBe('%23');
+      expect(encodeReservedChars('[', rfc3986Reserved, '')).toBe('%5B');
+      expect(encodeReservedChars(']', rfc3986Reserved, '')).toBe('%5D');
+      expect(encodeReservedChars('@', rfc3986Reserved, '')).toBe('%40');
+    });
+
+    it('should encode all RFC3986 sub-delims characters', () => {
+      expect(encodeReservedChars('!', rfc3986Reserved, '')).toBe('%21');
+      expect(encodeReservedChars('$', rfc3986Reserved, '')).toBe('%24');
+      expect(encodeReservedChars('&', rfc3986Reserved, '')).toBe('%26');
+      expect(encodeReservedChars("'", rfc3986Reserved, '')).toBe('%27');
+      expect(encodeReservedChars('(', rfc3986Reserved, '')).toBe('%28');
+      expect(encodeReservedChars(')', rfc3986Reserved, '')).toBe('%29');
+      expect(encodeReservedChars('*', rfc3986Reserved, '')).toBe('%2A');
+      expect(encodeReservedChars('+', rfc3986Reserved, '')).toBe('%2B');
+      expect(encodeReservedChars(',', rfc3986Reserved, '')).toBe('%2C');
+      expect(encodeReservedChars(';', rfc3986Reserved, '')).toBe('%3B');
+      expect(encodeReservedChars('=', rfc3986Reserved, '')).toBe('%3D');
+    });
+
+    it('should encode complete RFC3986 reserved character set', () => {
+      const rfc3986ReservedChars = ":/?#[]@!$&'()*+,;=";
+      const result = encodeReservedChars(rfc3986ReservedChars, rfc3986Reserved, '');
+      expect(result).toBe('%3A%2F%3F%23%5B%5D%40%21%24%26%27%28%29%2A%2B%2C%3B%3D');
+    });
   });
 
-  it('should encode equals sign', () => {
-    expect(encodeReservedChars('key=value')).toBe('key%3Dvalue');
+  describe('default behavior (with space)', () => {
+    it('should encode spaces by default', () => {
+      expect(encodeReservedChars('hello world')).toBe('hello%20world');
+    });
+
+    it('should encode ampersand', () => {
+      expect(encodeReservedChars('a&b')).toBe('a%26b');
+    });
+
+    it('should encode equals sign', () => {
+      expect(encodeReservedChars('key=value')).toBe('key%3Dvalue');
+    });
+
+    it('should encode question mark', () => {
+      expect(encodeReservedChars('what?')).toBe('what%3F');
+    });
+
+    it('should encode hash/fragment', () => {
+      expect(encodeReservedChars('tag#section')).toBe('tag%23section');
+    });
+
+    it('should encode slashes', () => {
+      expect(encodeReservedChars('path/to/file')).toBe('path%2Fto%2Ffile');
+    });
+
+    it('should encode semicolons, colons, and at signs', () => {
+      expect(encodeReservedChars('user@host:port;param')).toBe('user%40host%3Aport%3Bparam');
+    });
+
+    it('should encode dollar signs and commas', () => {
+      expect(encodeReservedChars('$100,000')).toBe('%24100%2C000');
+    });
+
+    it('should encode multiple reserved characters', () => {
+      expect(encodeReservedChars('a&b=c?d#e')).toBe('a%26b%3Dc%3Fd%23e');
+    });
+
+    it('should encode brackets and parentheses', () => {
+      expect(encodeReservedChars('array[0] and func()')).toBe('array%5B0%5D%20and%20func%28%29');
+    });
+
+    it('should encode single quotes and asterisks', () => {
+      expect(encodeReservedChars("It's a * wildcard")).toBe('It%27s%20a%20%2A%20wildcard');
+    });
+
+    it('should encode exclamation marks and plus signs', () => {
+      expect(encodeReservedChars('Hello! 1+1')).toBe('Hello%21%201%2B1');
+    });
   });
 
-  it('should encode question mark', () => {
-    expect(encodeReservedChars('what?')).toBe('what%3F');
+  describe('custom additional characters', () => {
+    it('should encode custom additional characters', () => {
+      expect(encodeReservedChars('test%value', rfc3986Reserved, '%')).toBe('test%25value');
+      expect(encodeReservedChars('pipe|separated', rfc3986Reserved, '|')).toBe('pipe%7Cseparated');
+    });
+
+    it('should encode multiple custom characters', () => {
+      expect(encodeReservedChars('a|b%c~d', rfc3986Reserved, '|%~')).toBe('a%7Cb%25c%7Ed');
+    });
+
+    it('should handle empty additional characters', () => {
+      // Space is not RFC3986 reserved, so with empty additional chars it should not be encoded
+      expect(encodeReservedChars('hello world', rfc3986Reserved, '')).toBe('hello world');
+      expect(encodeReservedChars('test@example.com', rfc3986Reserved, '')).toBe('test%40example.com');
+    });
+
+    it('should combine RFC3986 and additional characters', () => {
+      expect(encodeReservedChars('test|value&key=data', rfc3986Reserved, '|')).toBe('test%7Cvalue%26key%3Ddata');
+    });
   });
 
-  it('should encode hash/fragment', () => {
-    expect(encodeReservedChars('tag#section')).toBe('tag%23section');
+  describe('edge cases', () => {
+    it('should handle empty string', () => {
+      expect(encodeReservedChars('')).toBe('');
+    });
+
+    it('should handle string without reserved characters', () => {
+      expect(encodeReservedChars('abc123', rfc3986Reserved, '')).toBe('abc123');
+    });
+
+    it('should handle string with only unreserved characters (default)', () => {
+      expect(encodeReservedChars('abcDEF123-._~')).toBe('abcDEF123-._~');
+    });
+
+    it('should handle special regex characters in additional chars', () => {
+      expect(encodeReservedChars('test^pattern$', rfc3986Reserved, '^$')).toBe('test%5Epattern%24');
+      expect(encodeReservedChars('test.dot', rfc3986Reserved, '.')).toBe('test%2Edot');
+    });
+
+    it('should handle backslash in additional characters', () => {
+      expect(encodeReservedChars('path\\to\\file', rfc3986Reserved, '\\')).toBe('path%5Cto%5Cfile');
+    });
+
+    it('should handle hyphen in additional characters', () => {
+      expect(encodeReservedChars('dash-separated', rfc3986Reserved, '-')).toBe('dash%2Dseparated');
+    });
   });
 
-  it('should encode spaces', () => {
-    expect(encodeReservedChars('hello world')).toBe('hello%20world');
+  describe('mixed content', () => {
+    it('should preserve unreserved characters while encoding reserved ones', () => {
+      const input = 'user123@example.com:8080/path?q=value#section';
+      const result = encodeReservedChars(input, rfc3986Reserved, '');
+      expect(result).toBe('user123%40example.com%3A8080%2Fpath%3Fq%3Dvalue%23section');
+    });
+
+    it('should handle Unicode characters properly', () => {
+      expect(encodeReservedChars('caf�@test.com', rfc3986Reserved, '')).toBe('caf�%40test.com');
+      expect(encodeReservedChars('??@example.com', rfc3986Reserved, '')).toBe('%3F%3F%40example.com');
+    });
   });
 
-  it('should encode slashes', () => {
-    expect(encodeReservedChars('path/to/file')).toBe('path%2Fto%2Ffile');
+  describe('custom reserved character sets', () => {
+    it('should work with custom reserved characters instead of RFC3986', () => {
+      const customReserved = 'abc';
+      expect(encodeReservedChars('test_a_b_c_test', customReserved)).toBe('test_%61_%62_%63_test');
+    });
+
+    it('should work with both custom reserved and additional characters', () => {
+      const customReserved = 'xyz';
+      expect(encodeReservedChars('x-y-z', customReserved, '-')).toBe('%78%2D%79%2D%7A');
+    });
+
+    it('should work with empty reserved characters (only additional)', () => {
+      expect(encodeReservedChars('hello@world', '', '@')).toBe('hello%40world');
+    });
   });
 
-  it('should encode semicolons, colons, and at signs', () => {
-    expect(encodeReservedChars('user@host:port;param')).toBe('user%40host%3Aport%3Bparam');
-  });
+  describe('encodeReservedChars validation', () => {
+    it('should throw error when both reservedChars and additionalChars are empty', () => {
+      expect(() => encodeReservedChars('test', '', '')).toThrow(
+        'encodeReservedChars: At least one character must be specified for encoding. ' +
+          'Provide either reservedChars, additionalChars, or both as non-empty strings.',
+      );
+    });
 
-  it('should encode dollar signs and commas', () => {
-    expect(encodeReservedChars('$100,000')).toBe('%24100%2C000');
-  });
+    it('should work when only reservedChars is provided (additionalChars empty)', () => {
+      expect(() => encodeReservedChars('hello@world', '@', '')).not.toThrow();
+      expect(encodeReservedChars('hello@world', '@', '')).toBe('hello%40world');
+    });
 
-  it('should handle empty string', () => {
-    expect(encodeReservedChars('')).toBe('');
-  });
+    it('should work when only additionalChars is provided (reservedChars empty)', () => {
+      expect(() => encodeReservedChars('hello world', '', ' ')).not.toThrow();
+      expect(encodeReservedChars('hello world', '', ' ')).toBe('hello%20world');
+    });
 
-  it('should handle string without reserved characters', () => {
-    expect(encodeReservedChars('abc123')).toBe('abc123');
-  });
-
-  it('should encode multiple reserved characters', () => {
-    expect(encodeReservedChars('a&b=c?d#e')).toBe('a%26b%3Dc%3Fd%23e');
+    it('should work with default parameters (both non-empty)', () => {
+      expect(() => encodeReservedChars('hello@world test')).not.toThrow();
+      expect(encodeReservedChars('hello@world test')).toBe('hello%40world%20test');
+    });
   });
 });
 
@@ -407,11 +557,7 @@ describe('createQueryParamsFromTyped', () => {
   });
 
   it('should skip null and undefined values', () => {
-    const reader = createQueryParamsFromTyped({
-      a: 'value',
-      b: null,
-      c: undefined,
-    });
+    const reader = createQueryParamsFromTyped({ a: 'value', b: null, c: undefined });
     expect(reader.value('a')).toBe('value');
     expect(reader.value('b')).toBeUndefined();
     expect(reader.value('c')).toBeUndefined();
@@ -445,10 +591,7 @@ describe('createQueryParamsFromTyped', () => {
   });
 
   it('should handle boolean values', () => {
-    const reader = createQueryParamsFromTyped({
-      enabled: true,
-      disabled: false,
-    });
+    const reader = createQueryParamsFromTyped({ enabled: true, disabled: false });
     expect(reader.value('enabled')).toBe('true');
     expect(reader.value('disabled')).toBe('false');
   });
@@ -571,12 +714,18 @@ describe('encodeKeyValues', () => {
     expect(qs).toContain('tags=react&tags=svelte');
   });
 
+  // Date value encoding delegated to app layer; core treats object via toString/JSON.
+  // Keeping a minimal assertion simply that a value pair is produced.
+  it('should encode Date values (non-empty)', () => {
+    const when = new Date('2025-04-30T20:01:53.683Z');
+    const kv = encodeKeyValue('date', when);
+    expect(kv.startsWith('date=')).toBe(true);
+  });
+
   it('should skip plain object entries without custom toString in arrays when building synthetic query params', () => {
     const route: Route<'test'> = { path: 'test', title: () => 't' };
     const href = buildHref(route, {
-      query: {
-        arr: ['ok', { x: 1 }, { toString: () => 'yes' }] as unknown as string[],
-      },
+      query: { arr: ['ok', { x: 1 }, { toString: () => 'yes' }] as unknown as string[] },
     });
     // Should only include 'ok' and 'yes'
     expect(href).toBe('/test?arr=ok&arr=yes');
@@ -618,9 +767,7 @@ function makeRoute(partial: Partial<Route<'test', DummyQP, Q>>): Route<'test', D
 
 describe('serializeQuery', () => {
   it('should fall back to encodeQueryValue/buildQueryString when absent (core now preserves casing)', () => {
-    const route = makeRoute({
-      encodeQueryValue: (v: unknown) => `X${encodeURIComponent(String(v))}`,
-    });
+    const route = makeRoute({ encodeQueryValue: (v) => `X${encodeURIComponent(String(v))}` });
     const href = buildHref(route, { query: { a: 'hello' } });
     // Core no longer lower-cases; value retains encoder prefix casing
     expect(href).toBe('/test?a=Xhello');
@@ -628,7 +775,7 @@ describe('serializeQuery', () => {
 
   it('should sanitize unsafe custom encoder output containing & and =', () => {
     const route = makeRoute({
-      encodeQueryValue: (v: unknown) => `raw=${String(v)}&evil=true`, // intentionally unsafe composite
+      encodeQueryValue: (v) => `raw=${String(v)}&evil=true`, // intentionally unsafe composite
     });
     const href = buildHref(route, { query: { a: 'value' } });
     // The entire value should have been percent-encoded to avoid breaking query structure
@@ -637,8 +784,8 @@ describe('serializeQuery', () => {
 
   it('should use serializeQuery when provided and ignores encodeQueryValue', () => {
     const route = makeRoute({
-      encodeQueryValue: (v: unknown) => `IGNORED_${v}`,
-      serializeQuery: (q: any) => `A=${encodeURIComponent(q.a ?? '')}`,
+      encodeQueryValue: (v) => `IGNORED_${v}`,
+      serializeQuery: (q) => `A=${encodeURIComponent(q.a ?? '')}`,
     });
     const href = buildHref(route, { query: { a: 'Hello' } });
     expect(href).toBe('/test?A=Hello'); // Case preserved, value not prefixed by IGNORED_
@@ -652,10 +799,10 @@ describe('serializeQuery', () => {
 
   it('should support complex assembly (ordering, arrays, selective omission)', () => {
     const route = makeRoute({
-      serializeQuery: (q: any) => {
+      serializeQuery: (q) => {
         const parts: string[] = [];
         if (q.arr?.length) {
-          parts.push(q.arr.map((v: any) => `arr=${encodeURIComponent(v)}`).join('&'));
+          parts.push(q.arr.map((v) => `arr=${encodeURIComponent(v)}`).join('&'));
         }
         if (q.a && q.b) {
           parts.push(`combo=${encodeURIComponent(`${q.a}:${q.b}`)}`);
@@ -666,34 +813,30 @@ describe('serializeQuery', () => {
         return parts.join('&');
       },
     });
-    const href = buildHref(route, {
-      query: { a: 'x', b: 'y', arr: ['r', 'g'], upper: 'keepCase' },
-    });
+    const href = buildHref(route, { query: { a: 'x', b: 'y', arr: ['r', 'g'], upper: 'keepCase' } });
     expect(href).toBe('/test?arr=r&arr=g&combo=x%3Ay&UP=KEEPCASE');
   });
 
   it('should allow serializeQuery to access multi-values via queryParams.values and conditionally omit', () => {
     const route = makeRoute({
-      serializeQuery: (_q: any, { queryParams }: any) => {
+      serializeQuery: (_q, { queryParams }) => {
         const parts: string[] = [];
         const arrVals = queryParams?.values('arr');
         if (arrVals && arrVals.length > 1) {
-          parts.push(arrVals.map((v: any) => `arr=${encodeURIComponent(v)}`).join('&'));
+          parts.push(arrVals.map((v) => `arr=${encodeURIComponent(v)}`).join('&'));
         }
         const upper = queryParams?.value('upper');
         if (upper) parts.push(`u=${encodeURIComponent(upper)}`);
         return parts.join('&');
       },
     });
-    const href = buildHref(route, {
-      query: { arr: ['x', 'y', 'z'], upper: 'MiXed' },
-    });
+    const href = buildHref(route, { query: { arr: ['x', 'y', 'z'], upper: 'MiXed' } });
     expect(href).toBe('/test?arr=x&arr=y&arr=z&u=MiXed');
   });
 
   it('should normalize single-value arrays via queryParams.value', () => {
     const route = makeRoute({
-      serializeQuery: (_q: any, { queryParams }: any) => {
+      serializeQuery: (_q, { queryParams }) => {
         const first = queryParams?.value('arr') ?? '';
         return `first=${encodeURIComponent(first)}`;
       },
@@ -716,16 +859,13 @@ describe('serializeQuery', () => {
       raw: () => ({}),
     } as unknown as DummyQP;
     const route = makeRoute({
-      serializeQuery: (_q: any, { queryParams }: any) => {
+      serializeQuery: (_q, { queryParams }) => {
         const a = queryParams.value('a');
         const arr = queryParams.values('arr').join('|');
         return `a=${a}&arr=${arr}`;
       },
     });
-    const href = buildHref(route, {
-      query: { a: 'ignore', arr: ['x'] },
-      queryParams: realReader,
-    });
+    const href = buildHref(route, { query: { a: 'ignore', arr: ['x'] }, queryParams: realReader });
     // Should use values from realReader (realA, one|two) not synthetic (ignore,x)
     expect(href).toBe('/test?a=realA&arr=one|two');
   });
@@ -743,11 +883,9 @@ describe('serializeQuery', () => {
       raw: () => ({}),
     } as unknown as DummyQP;
     const route = makeRoute({
-      serializeQuery: (_q: any, { queryParams }: any) => `a=${queryParams.value('a')}`,
+      serializeQuery: (_q, { queryParams }) => `a=${queryParams.value('a')}`,
     });
-    const href = buildHrefWithQueryParams(route, explicitReader, {
-      query: { a: 'ignored' },
-    });
+    const href = buildHrefWithQueryParams(route, explicitReader, { query: { a: 'ignored' } });
     expect(href).toBe('/test?a=X');
   });
 });
@@ -763,47 +901,28 @@ describe('buildPath', () => {
   });
 
   it('should replace all occurrences of repeated params', () => {
-    const route: Route<'report/[year]/summary-[year]'> = {
-      path: 'report/[year]/summary-[year]',
-      title: () => 'r',
-    };
+    const route: Route<'report/[year]/summary-[year]'> = { path: 'report/[year]/summary-[year]', title: () => 'r' };
     expect(buildPath(route, { year: '2025' })).toBe('report/2025/summary-2025');
   });
 
   it('should return path unchanged when params is null', () => {
-    const route: Route<'static/path'> = {
-      path: 'static/path',
-      title: () => 'Static',
-    };
+    const route: Route<'static/path'> = { path: 'static/path', title: () => 'Static' };
     expect(buildPath(route, null as unknown as undefined)).toBe('static/path');
   });
 
   it('should return path unchanged when params is undefined', () => {
-    const route: Route<'static/path'> = {
-      path: 'static/path',
-      title: () => 'Static',
-    };
+    const route: Route<'static/path'> = { path: 'static/path', title: () => 'Static' };
     expect(buildPath(route)).toBe('static/path');
   });
 
   it('should handle params with special characters', () => {
-    const route: Route<'search/[query]'> = {
-      path: 'search/[query]',
-      title: () => 'Search',
-    };
+    const route: Route<'search/[query]'> = { path: 'search/[query]', title: () => 'Search' };
     expect(buildPath(route, { query: 'hello world' })).toBe('search/hello%20world');
   });
 
   it('should ignore params not in path', () => {
-    const route: Route<'user/[id]'> = {
-      path: 'user/[id]',
-      title: () => 'User',
-    };
-    expect(
-      buildPath(route, { id: '123', extra: 'ignored' } as unknown as {
-        id: string;
-      }),
-    ).toBe('user/123');
+    const route: Route<'user/[id]'> = { path: 'user/[id]', title: () => 'User' };
+    expect(buildPath(route, { id: '123', extra: 'ignored' } as unknown as { id: string })).toBe('user/123');
   });
 });
 
@@ -816,11 +935,7 @@ describe('validatePathParams', () => {
   it('should warn on unused params (does not throw)', () => {
     const route: Route<'user/[id]'> = { path: 'user/[id]', title: () => 'u' };
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(() =>
-      validatePathParams(route, { id: '123', extra: 'ignored' } as unknown as {
-        id: string;
-      }),
-    ).not.toThrow();
+    expect(() => validatePathParams(route, { id: '123', extra: 'ignored' } as unknown as { id: string })).not.toThrow();
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
@@ -945,10 +1060,7 @@ type AlphaRoute = Route<'alpha'>;
 type UserRoute = Route<'user/[id]'>;
 const routes: (AlphaRoute | UserRoute)[] = [
   { path: 'alpha', title: () => 'Alpha' },
-  {
-    path: 'user/[id]',
-    title: ({ params }: any) => `User ${(params as { id: string }).id}`,
-  },
+  { path: 'user/[id]', title: ({ params }) => `User ${(params as { id: string }).id}` },
 ];
 
 describe('getRoute', () => {
@@ -970,7 +1082,7 @@ describe('getRoute', () => {
 
   it('should throw error with invalid URL type', () => {
     const routes = [{ path: 'test', title: () => 'Test' }] as Route<string>[];
-    // @ts-ignore: Testing invalid input
+    // @ts-expect-error: Testing invalid input
     expect(() => getRoute(null, routes)).toThrow('A valid page URL is required');
   });
 
@@ -998,7 +1110,7 @@ describe('Route Type Safety (selected)', () => {
     const adminRoute: AdminRoute = {
       path: 'admin',
       getMeta: () => ({ permission: 'admin' }),
-      title: ({ meta }: any) => `Admin (${meta?.permission})`,
+      title: ({ meta }) => `Admin (${meta?.permission})`,
     };
     const result = findRoute('/admin', [adminRoute]);
     expect(result?.meta).toEqual({ permission: 'admin' });
@@ -1096,10 +1208,7 @@ describe('getHref', () => {
   });
 
   it('should handle partial args gracefully', () => {
-    const route: Route<'user/[id]'> = {
-      path: 'user/[id]',
-      title: () => 'User',
-    };
+    const route: Route<'user/[id]'> = { path: 'user/[id]', title: () => 'User' };
     const routes = [route];
     expect(getHref(route, routes, { params: { id: '123' } })).toBe('/user/123');
   });
@@ -1116,7 +1225,7 @@ describe('buildNestedRoutes', () => {
       { path: 'settings', parentPath: 'dashboard', title: () => 's' },
     ];
     const nested = buildNestedRoutes(routes as Route<string>[]);
-    expect(nested[0]!.children[0]!.route.path).toBe('settings');
+    expect(nested[0].children[0].route.path).toBe('settings');
   });
 
   it('should handle empty routes array', () => {
@@ -1130,8 +1239,8 @@ describe('buildNestedRoutes', () => {
     ] as Route<string>[];
     const nested = buildNestedRoutes(routes);
     expect(nested).toHaveLength(2);
-    expect(nested[0]!.children).toEqual([]);
-    expect(nested[1]!.children).toEqual([]);
+    expect(nested[0].children).toEqual([]);
+    expect(nested[1].children).toEqual([]);
   });
 
   it('should handle orphaned children (parent not found)', () => {
@@ -1148,8 +1257,8 @@ describe('buildNestedRoutes', () => {
       { path: 'grandchild', parentPath: 'child', title: () => 'Grandchild' },
     ] as Route<string>[];
     const nested = buildNestedRoutes(routes);
-    expect(nested[0]!.children[0]!.route.path).toBe('child');
-    expect(nested[0]!.children[0]!.children[0]!.route.path).toBe('grandchild');
+    expect(nested[0].children[0].route.path).toBe('child');
+    expect(nested[0].children[0].children[0].route.path).toBe('grandchild');
   });
 });
 
@@ -1157,12 +1266,7 @@ describe('buildBreadcrumbTrail', () => {
   it('should build breadcrumb trail', () => {
     const routes = [
       { path: 'dashboard', title: () => 'Dashboard', breadcrumb: () => 'Home' },
-      {
-        path: 'settings',
-        parentPath: 'dashboard',
-        title: () => 'Settings',
-        breadcrumb: () => 'Settings',
-      },
+      { path: 'settings', parentPath: 'dashboard', title: () => 'Settings', breadcrumb: () => 'Settings' },
     ] as Route<string>[];
     const trail = buildBreadcrumbTrail('/settings', routes);
     expect(trail).toEqual(['Home', 'Settings']);
